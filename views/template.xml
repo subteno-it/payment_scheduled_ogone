@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        ##############################################################################
+        #
+        #    payment_scheduled_ogone module for OpenERP, Allows customers to pay for a purchase in several instalments
+        #    Copyright (C) 2016 SYLEAM Info Services ([http://www.syleam.fr])
+        #              Sebastien LANGE [sebastien.lange@syleam.fr]
+        #
+        #    This file is a part of payment_scheduled_ogone
+        #
+        #    payment_scheduled_ogone is free software: you can redistribute it and/or modify
+        #    it under the terms of the GNU Affero General Public License as published by
+        #    the Free Software Foundation, either version 3 of the License, or
+        #    (at your option) any later version.
+        #
+        #    payment_scheduled_ogone is distributed in the hope that it will be useful,
+        #    but WITHOUT ANY WARRANTY; without even the implied warranty of
+        #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        #    GNU Affero General Public License for more details.
+        #
+        #    You should have received a copy of the GNU Affero General Public License
+        #    along with this program.  If not, see [http://www.gnu.org/licenses/].
+        #
+        ##############################################################################
+
+        <template id="ogone_acquirer_button" inherit_id="payment_ogone.ogone_acquirer_button">
+            <xpath expr="//input[@name='AMOUNT']" position="after">
+                <t t-if="acquirer.payment_term_id">
+                    <input type='hidden' name='AMOUNT1' t-att-value='AMOUNT1 or "0.0"'/>
+                    <input type='hidden' name='AMOUNT2' t-att-value='AMOUNT2 or "0.0"'/>
+                    <input type='hidden' name='EXECUTIONDATE2' t-att-value='EXECUTIONDATE2'/>
+                    <input type='hidden' name='AMOUNT3' t-att-value='AMOUNT3 or "0.0"'/>
+                    <input type='hidden' name='EXECUTIONDATE3' t-att-value='EXECUTIONDATE3'/>
+                </t>
+            </xpath>
+        </template>
+
+    </data>
+</odoo>
