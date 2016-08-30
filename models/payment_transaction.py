@@ -22,8 +22,14 @@
 #
 ##############################################################################
 
-import payment_acquirer
-import payment_transaction
+from openerp import models
+
+
+class PaymentTransactionOgone(models.Model):
+    _inherit = 'payment.transaction'
+
+    # ogone status
+    _ogone_valid_tx_status = [5, 9, 56]
 
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
