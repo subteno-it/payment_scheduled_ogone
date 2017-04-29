@@ -1,57 +1,35 @@
 # -*- coding: utf-8 -*-
-##############################################################################
-#
-#    payment_scheduled_ogone module for OpenERP, Allows customers to pay for a purchase in several instalments
-#    Copyright (C) 2016 SYLEAM Info Services (<http://www.syleam.fr>)
-#              Sebastien LANGE <sebastien.lange@syleam.fr>
-#
-#    This file is a part of payment_scheduled_ogone
-#
-#    payment_scheduled_ogone is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    payment_scheduled_ogone is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-##############################################################################
+# Copyright 2016 SYLEAM Info Services
+# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from openerp.tools import float_round, float_repr
-from openerp.tools import DEFAULT_SERVER_DATE_FORMAT
+from odoo.tools import float_round, float_repr
+from odoo.tools import DEFAULT_SERVER_DATE_FORMAT
 from datetime import datetime
 from hashlib import sha1
-from openerp.osv import osv
+from odoo import models
 
 import time
 import urlparse
 
-from openerp.addons.payment_ogone.controllers.main import OgoneController
+from odoo.addons.payment_ogone.controllers.main import OgoneController
 
 
-class PaymentAcquirerOgone(osv.Model):
+class PaymentAcquirerOgone(models.Model):
     _inherit = 'payment.acquirer'
 
-    def _ogone_generate_shasign(self, acquirer, inout, values):
+    def _ogone_generate_shasign(self, inout, values):
         """ Generate the shasign for incoming or outgoing communications.
 
-        :param browse acquirer: the payment.acquirer browse record. It should
-                                have a shakey in shaky out
-        :param string inout: 'in' (openerp contacting ogone) or 'out' (ogone
-                             contacting openerp). In this last case only some
+        :param string inout: 'in' (odoo contacting ogone) or 'out' (ogone
+                             contacting odoo). In this last case only some
                              fields should be contained (see e-Commerce basic)
         :param dict values: transaction values
 
         :return string: shasign
         """
         assert inout in ('in', 'out')
-        assert acquirer.provider == 'ogone'
-        key = getattr(acquirer, 'ogone_shakey_' + inout)
+        assert self.provider == 'ogone'
+        key = getattr(self, 'ogone_shakey_' + inout)
 
         def filter_key(key):
             if inout == 'in':
@@ -131,14 +109,13 @@ class PaymentAcquirerOgone(osv.Model):
         shasign = sha1(sign).hexdigest()
         return shasign
 
-    def ogone_form_generate_values(self, cr, uid, id, values, context=None):
-        base_url = self.pool['ir.config_parameter'].get_param(cr, uid, 'web.base.url')
-        acquirer = self.browse(cr, uid, id, context=context)
-        if not acquirer.payment_term_id:
-            return super(PaymentAcquirerOgone, self).ogone_form_generate_values(cr, uid, id, values, context=context)
+    def ogone_form_generate_values(self, values):
+        base_url = self.env['ir.config_parameter'].get_param('web.base.url')
+        if not self.payment_term_id:
+            return super(PaymentAcquirerOgone, self).ogone_form_generate_values(values)
         ogone_tx_values = dict(values)
         temp_ogone_tx_values = {
-            'PSPID': acquirer.ogone_pspid,
+            'PSPID': self.ogone_pspid,
             'ORDERID': values['reference'],
             'AMOUNT': float_repr(float_round(values['amount'], 2) * 100, 0),
             'CURRENCY': values['currency'] and values['currency'].name or '',
@@ -156,12 +133,12 @@ class PaymentAcquirerOgone(osv.Model):
             'CANCELURL': '%s' % urlparse.urljoin(base_url, OgoneController._cancel_url),
             'PARAMPLUS': 'return_url=%s' % ogone_tx_values.pop('return_url') if ogone_tx_values.get('return_url') else False,
         }
-        if values.get('type') == 'form_save':
+        if self.save_token in ['ask', 'always']:
             temp_ogone_tx_values.update({
                 'ALIAS': 'ODOO-NEW-ALIAS-%s' % time.time(),    # something unique,
-                'ALIASUSAGE': values.get('alias_usage') or acquirer.ogone_alias_usage,
+                'ALIASUSAGE': values.get('alias_usage') or self.ogone_alias_usage,
             })
-        totlines = acquirer.payment_term_id.compute(
+        totlines = self.payment_term_id.compute(
             float_round(values['amount'], 2),
         )[0]
         index = 1
@@ -173,10 +150,8 @@ class PaymentAcquirerOgone(osv.Model):
                 temp_ogone_tx_values['AMOUNT' + str(index)] = float_repr(float_round(amount, 2) * 100, 0)
                 temp_ogone_tx_values['EXECUTIONDATE' + str(index)] = scheduled_date
             index += 1
-        shasign = self._ogone_generate_shasign(acquirer, 'in', temp_ogone_tx_values)
+        shasign = self._ogone_generate_shasign('in', temp_ogone_tx_values)
         temp_ogone_tx_values['SHASIGN'] = shasign
         ogone_tx_values.update(temp_ogone_tx_values)
         return ogone_tx_values
 
-
-# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
