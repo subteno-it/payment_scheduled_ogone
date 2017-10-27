@@ -5,7 +5,6 @@
 from odoo.tools import float_round, float_repr
 from odoo.tools import DEFAULT_SERVER_DATE_FORMAT
 from datetime import datetime
-from hashlib import sha1
 from odoo import models
 
 import time
@@ -16,98 +15,6 @@ from odoo.addons.payment_ogone.controllers.main import OgoneController
 
 class PaymentAcquirerOgone(models.Model):
     _inherit = 'payment.acquirer'
-
-    def _ogone_generate_shasign(self, inout, values):
-        """ Generate the shasign for incoming or outgoing communications.
-
-        :param string inout: 'in' (odoo contacting ogone) or 'out' (ogone
-                             contacting odoo). In this last case only some
-                             fields should be contained (see e-Commerce basic)
-        :param dict values: transaction values
-
-        :return string: shasign
-        """
-        assert inout in ('in', 'out')
-        assert self.provider == 'ogone'
-        key = getattr(self, 'ogone_shakey_' + inout)
-
-        def filter_key(key):
-            if inout == 'in':
-                return True
-            else:
-                # SHA-OUT keys
-                # source https://viveum.v-psp.com/Ncol/Viveum_e-Com-BAS_EN.pdf
-                keys = [
-                    'AAVADDRESS',
-                    'AAVCHECK',
-                    'AAVMAIL',
-                    'AAVNAME',
-                    'AAVPHONE',
-                    'AAVZIP',
-                    'ACCEPTANCE',
-                    'ALIAS',
-                    'AMOUNT',
-                    'AMOUNT1',
-                    'AMOUNT2',
-                    'AMOUNT3',
-                    'BIC',
-                    'BIN',
-                    'BRAND',
-                    'CARDNO',
-                    'CCCTY',
-                    'CN',
-                    'COMPLUS',
-                    'CREATION_STATUS',
-                    'CURRENCY',
-                    'CVCCHECK',
-                    'DCC_COMMPERCENTAGE',
-                    'DCC_CONVAMOUNT',
-                    'DCC_CONVCCY',
-                    'DCC_EXCHRATE',
-                    'DCC_EXCHRATESOURCE',
-                    'DCC_EXCHRATETS',
-                    'DCC_INDICATOR',
-                    'DCC_MARGINPERCENTAGE',
-                    'DCC_VALIDHOURS',
-                    'DIGESTCARDNO',
-                    'ECI',
-                    'ED',
-                    'ENCCARDNO',
-                    'EXECUTIONDATE2',
-                    'EXECUTIONDATE3',
-                    'FXAMOUNT',
-                    'FXCURRENCY',
-                    'IBAN',
-                    'IP',
-                    'IPCTY',
-                    'NBREMAILUSAGE',
-                    'NBRIPUSAGE',
-                    'NBRIPUSAGE_ALLTX',
-                    'NBRUSAGE',
-                    'NCERROR',
-                    'NCERRORCARDNO',
-                    'NCERRORCN',
-                    'NCERRORCVC',
-                    'NCERRORED',
-                    'ORDERID',
-                    'PAYID',
-                    'PAYIDSUB',
-                    'PM',
-                    'SCO_CATEGORY',
-                    'SCORING',
-                    'STATUS',
-                    'SUBBRAND',
-                    'SUBSCRIPTION_ID',
-                    'TRXDATE',
-                    'VC'
-                ]
-                return key.upper() in keys
-
-        items = sorted((k.upper(), v) for k, v in values.items())
-        sign = ''.join('%s=%s%s' % (k, v, key) for k, v in items if v and filter_key(k))
-        sign = sign.encode("utf-8")
-        shasign = sha1(sign).hexdigest()
-        return shasign
 
     def ogone_form_generate_values(self, values):
         base_url = self.env['ir.config_parameter'].get_param('web.base.url')
